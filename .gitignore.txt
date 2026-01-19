@@ -1,0 +1,44 @@
+#################################
+# GENERAL
+#################################
+.DS_Store
+Thumbs.db
+.env
+.env.local
+.env..local
+.log
+
+#################################
+# FRONTEND (React + Vite)
+#################################
+frontendnode_modules
+frontenddist
+frontend.vite
+
+#################################
+# BACKEND PHP (Composer)
+#################################
+backendvendor
+backendcomposer.lock
+
+#################################
+# BACKEND Node (Puppeteer)
+#################################
+backendnode_modules
+backendpackage-lock.json
+
+#################################
+# PDF  TEMP FILES
+#################################
+backend.pdf
+backendtmp
+backendstorage
+backendcache
+
+#################################
+# IDEs  EDITORS
+#################################
+.vscode
+.idea
+.swp
+.swo
