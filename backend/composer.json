@@ -1,0 +1,12 @@
+{
+    "name": "lomas/backend",
+    "authors": [
+        {
+            "name": "Juan Carlos Hernandez Lomas",
+            "email": "hernandez.lomas.juan102@gmail.com"
+        }
+    ],
+    "require": {
+        "spatie/browsershot": "^5.2"
+    }
+}
