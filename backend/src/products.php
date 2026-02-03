@@ -1,18 +1,71 @@
 <?php
 header("Content-Type: application/json; charset=utf-8");
 
-// ✅ Aquí normalmente haces query a MySQL y traes imageUrl de tu BD
-$products = [];
-for ($i = 1; $i <= 45; $i++) {
-  $products[] = [
-    "id" => "AB-" . str_pad($i, 3, "0", STR_PAD_LEFT),
-    "name" => "Producto Abarrotes $i",
-    "price" => 10 + $i,
-    "oldPrice" => 15 + $i,
-    "category" => ($i % 2 === 0) ? "Abarrotes" : "Bebidas",
-    // ✅ solo URL (no se guarda imagen en el proyecto)
-    "imageUrl" => "https://via.placeholder.com/600x450.png?text=Producto+$i"
-  ];
+
+require __DIR__ . "/db.php";
+
+$pdo = db();
+
+// Trae productos + categoría
+$sql = "
+SELECT
+  p.id, p.code, p.name, p.description,
+  p.price, p.old_price,
+  p.unit, p.presentation,
+  p.product_type,
+  p.image_url,
+  p.active,
+  c.name AS category
+FROM product p
+LEFT JOIN category c ON c.id = p.category_id
+WHERE p.active = 1
+ORDER BY c.name, p.name
+";
+
+$products = $pdo->query($sql)->fetchAll();
+
+// Si es bolo, trae sus items
+// (para no hacer mil queries, lo hacemos en 2 pasos)
+$boloIds = array_map(fn($x) => $x["id"], array_filter($products, fn($p) => $p["product_type"] === "bolo"));
+
+$boloItemsByProductId = [];
+
+if (count($boloIds) > 0) {
+  $in = implode(",", array_fill(0, count($boloIds), "?"));
+  $stmt = $pdo->prepare("SELECT bolo_product_id, item_name, quantity, unit, sort_order
+                         FROM bolo_item
+                         WHERE bolo_product_id IN ($in)
+                         ORDER BY bolo_product_id, sort_order");
+  $stmt->execute($boloIds);
+  $rows = $stmt->fetchAll();
+
+  foreach ($rows as $r) {
+    $pid = $r["bolo_product_id"];
+    if (!isset($boloItemsByProductId[$pid])) $boloItemsByProductId[$pid] = [];
+    $boloItemsByProductId[$pid][] = [
+      "name" => $r["item_name"],
+      "quantity" => $r["quantity"],
+      "unit" => $r["unit"]
+    ];
+  }
 }
 
-echo json_encode($products, JSON_UNESCAPED_UNICODE);
+// Normaliza a formato JSON cómodo para React
+$out = array_map(function ($p) use ($boloItemsByProductId) {
+  return [
+    "id" => $p["id"],
+    "code" => $p["code"],
+    "name" => $p["name"],
+    "category" => $p["category"],
+    "description" => $p["description"],
+    "price" => (float)$p["price"],
+    "oldPrice" => $p["old_price"] !== null ? (float)$p["old_price"] : null,
+    "unit" => $p["unit"],
+    "presentation" => $p["presentation"],
+    "type" => $p["product_type"], // normal | bolo
+    "imageUrl" => $p["image_url"],
+    "includes" => $p["product_type"] === "bolo" ? ($boloItemsByProductId[$p["id"]] ?? []) : []
+  ];
+}, $products);
+
+echo json_encode($out, JSON_UNESCAPED_UNICODE);
